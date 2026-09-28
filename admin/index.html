@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><title>Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css"></head><body>
+<div class="wrap" id="app"></div><div class="toast" id="toast"></div>
+<script src="../shared.js"></script>
+<script>
+function route(){bg();const app=$('#app');
+if(!authed){app.innerHTML=`<form class="panel login" id="lf" autocomplete="off"><h2 style="margin:0 0 4px">Masuk admin</h2><p class="hint" style="margin:0 0 10px">Password awal: admin123</p><label for="pw">Password</label><div class="pwr"><input id="pw" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" autofocus><button type="button" class="btn gh" id="eye">Sembunyikan</button></div><div class="row"><button class="btn" type="submit">Masuk</button><a class="btn gh" href="/">Kembali</a></div><p class="hint"><a href="#" id="fg" style="text-decoration:underline">Lupa password? Reset</a></p></form>`;
+$('#lf').onsubmit=e=>{e.preventDefault();if($('#pw').value.trim()===cfg.password){authed=true;route()}else{toast('Password salah',1);$('#pw').select()}};
+$('#eye').onclick=()=>{const p=$('#pw'),h=p.type==='text';p.type=h?'password':'text';$('#eye').textContent=h?'Tampilkan':'Sembunyikan'};
+$('#fg').onclick=e=>{e.preventDefault();if(confirm('Reset password ke admin123?')){cfg.password='admin123';save();toast('Password direset ke admin123')}};
+return}
+app.innerHTML=`<div class="adm"><div class="panel"><div class="top"><h2>Admin panel</h2><div class="row" style="margin:0"><a class="btn gh" href="/">Lihat halaman</a><button class="btn gh" id="out">Keluar</button></div></div>
+<div class="tabs">${[['profil','Profil'],['link','Link & sosmed'],['tampil','Tampilan'],['data','Data']].map(t=>`<button data-t="${t[0]}" class="${tab===t[0]?'on':''}">${t[1]}</button>`).join('')}</div><div id="form"></div></div>
+<div class="pv"><div id="prev">${card()}</div></div></div>`;
+$('#out').onclick=()=>{authed=false;location.href='/'};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;route()});form()}
+function fld(l,p,t='text'){return `<label>${l}</label><input type="${t}" data-p="${p}" value="${esc(get(p))}">`}
+function get(p){return p.split('.').reduce((o,k)=>o?.[k],cfg)}
+function set(p,v){const k=p.split('.'),l=k.pop();k.reduce((o,x)=>o[x],cfg)[l]=v}
+const sel=(p,opts,v)=>`<select data-p="${p}">${opts.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select>`;
+function form(){const f=$('#form'),c=cfg;let h='';
+if(tab==='profil')h=`${fld('Nama','name')}${fld('Bio','bio')}${fld('Teks status','statusText')}${fld('Badge (kosongkan untuk sembunyikan)','badge')}
+<label>Foto profil</label><input type="file" accept="image/*" id="fa"><p class="hint">Gambar disimpan di browser ini. Link gambar dari internet tidak bisa tampil di halaman publish.</p>
+<label>Statistik</label><div class="g2">${['views','followers','likes','sales','rank'].map(k=>`<div><input aria-label="${k}" data-p="stats.${k}" value="${esc(c.stats[k])}"><p class="hint" style="margin:3px 0 0">${k}</p></div>`).join('')}</div>`;
+if(tab==='link')h=`<b>Tombol sosmed</b>${c.socials.map((s,i)=>`<div class="item"><div class="g2">${sel(`socials.${i}.type`,['chat','instagram','tiktok'],s.type)}<input data-p="socials.${i}.url" placeholder="https://..." value="${esc(s.url)}"></div><div class="row"><button class="btn rd" data-del="socials.${i}">Hapus</button></div></div>`).join('')}<div class="row"><button class="btn gh" data-add="socials">+ Sosmed</button></div>
+<b style="display:block;margin-top:22px">Daftar link</b>${c.links.map((l,i)=>`<div class="item">${fld('Judul',`links.${i}.title`)}${fld('Deskripsi',`links.${i}.desc`)}${fld('URL',`links.${i}.url`)}<div class="g2"><div><label>Ikon</label>${sel(`links.${i}.icon`,['chat','heart','link','cart','users','spark'],l.icon)}</div><div><label>Warna</label>${sel(`links.${i}.color`,Object.keys(COL),l.color)}</div></div><div class="row"><button class="btn gh" data-mv="${i},-1">Naik</button><button class="btn gh" data-mv="${i},1">Turun</button><button class="btn rd" data-del="links.${i}">Hapus</button></div></div>`).join('')}<div class="row"><button class="btn gh" data-add="links">+ Link</button></div>
+${fld('Teks tombol komentar','commentsLabel')}${fld('URL komentar','commentsUrl')}`;
+if(tab==='tampil')h=`<label>Gambar latar</label><input type="file" accept="image/*" id="fb"><div class="row"><button class="btn rd" id="cb">Hapus latar</button></div>${fld('Teks footer','footer')}`;
+if(tab==='data')h=`<label>Ekspor / impor konfigurasi (JSON)</label><textarea id="js">${esc(JSON.stringify({...c,avatar:c.avatar?'(gambar)':'',bg:c.bg?'(gambar)':''},null,1))}</textarea><div class="row"><button class="btn" id="imp">Impor JSON</button><button class="btn rd" id="rst">Reset ke awal</button></div><p class="hint">Data tersimpan di browser ini saja. Kirim JSON di atas ke saya bila ingin dijadikan tampilan default untuk semua pengunjung.</p>${fld('Ganti password admin','password')}`;
+f.innerHTML=h;
+f.querySelectorAll('[data-p]').forEach(e=>e.oninput=()=>{set(e.dataset.p,e.value);save();$('#prev').innerHTML=card()});
+f.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{const[a,i]=b.dataset.del.split('.');cfg[a].splice(+i,1);save();route()});
+f.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const a=b.dataset.add;cfg[a].push(a==='links'?{title:'Link baru',desc:'Deskripsi',url:'#',icon:'link',color:'blue'}:{type:'chat',url:'#'});save();route()});
+f.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{const[i,d]=b.dataset.mv.split(',').map(Number),j=i+d,a=cfg.links;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save();route()});
+const up=(id,key,max)=>{const e=$(id);if(!e)return;e.onchange=()=>{const fl=e.files[0];if(!fl)return;const im=new Image;im.onload=()=>{const r=Math.min(1,max/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=im.width*r;cv.height=im.height*r;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);cfg[key]=cv.toDataURL('image/jpeg',.75);save();bg();$('#prev').innerHTML=card();toast('Tersimpan')};im.src=URL.createObjectURL(fl)}};
+up('#fa','avatar',300);up('#fb','bg',1280);
+if($('#cb'))$('#cb').onclick=()=>{cfg.bg='';save();bg();toast('Latar dihapus')};
+if($('#imp'))$('#imp').onclick=()=>{try{const j=JSON.parse($('#js').value);if(j.avatar==='(gambar)')j.avatar=cfg.avatar;if(j.bg==='(gambar)')j.bg=cfg.bg;cfg={...DEF,...j};save();route();toast('Diimpor')}catch(e){toast('JSON tidak valid')}};
+if($('#rst'))$('#rst').onclick=()=>{if(confirm('Reset semua data?')){cfg=JSON.parse(JSON.stringify(DEF));save();route()}}}
+route();
+</script></body></html>
